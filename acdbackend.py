@@ -25,14 +25,14 @@ class AcdBackend(duplicity.backend.Backend):
  
     def put(self, source_path, remote_filename = None):
         log.Info("Writing %s" % target_path.name)
-        command = "amdcli ul %s %s" % (source_path.name, self.remote_pathdir.name)
+        command = "acdcli ul %s %s" % (source_path.name, self.remote_pathdir.name)
         self.subprocess_popen(command)
         remote_path = self.remote_pathdir.append(source_path.get_filename())
         if remote_filename:
-            command = "amdcli rn %s %s" % (remote_path.name, remote_filename)
+            command = "acdcli rn %s %s" % (remote_path.name, remote_filename)
             self.subprocess_popen(command)
             remote_path = self.remote_pathdir.append(remote_filename)
-        _, stdout, _ = self.subprocess_popen("amdcli metadata %s" % remote_path.name)
+        _, stdout, _ = self.subprocess_popen("acdcli metadata %s" % remote_path.name)
         target_md5 = json.loads(stdout)['contentProperties']['md5']
         source_md5 = self._md5(source_path)
         if source_md5 != target_md5:
@@ -41,7 +41,7 @@ class AcdBackend(duplicity.backend.Backend):
         
     def get(self, remote_filename, local_path):
         remote_path = self.remote_pathdir.append(remote_filename)
-        command = "amdcli dl %s %s" % (remote_path.name, local_path.get_parent_dir())
+        command = "acdcli dl %s %s" % (remote_path.name, local_path.get_parent_dir())
         self.subprocess_popen(command)
         if remote_filename != local_path.get_filename():
             current_path = path.Path(local_path.get_parent_dir())
@@ -49,15 +49,15 @@ class AcdBackend(duplicity.backend.Backend):
             current_path.rename(local_path)
 
     def _list(self):
-        command = "amdcli ls %s" % self.remote_pathdir.name
+        command = "acdcli ls %s" % self.remote_pathdir.name
         _, stdout, _ = self.subprocess_popen(command)
-        filename_list = [line.split()[2] for line in stdout[:-1].split('\n')] 
+        filename_list = [line.split()[2] for line in stdout.split('\n')[:-1]]
         return filename_list
         
     def delete(self, filename_list):
         for filename in filename_list:
             remote_path = self.remote_pathdir.append(filename)
-            command = "amdcli rm %s" % remote_path.name
+            command = "acdcli rm %s" % remote_path.name
             self.subprocess_popen(command)
 
     def _md5(self, fname):
