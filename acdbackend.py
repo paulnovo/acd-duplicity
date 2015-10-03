@@ -24,28 +24,27 @@ class AcdBackend(duplicity.backend.Backend):
             self.subprocess_popen(command)
  
     def put(self, source_path, remote_filename = None):
-        log.Info("Writing %s" % target_path.name)
         command = "acdcli ul %s %s" % (source_path.name, self.remote_pathdir.name)
         self.subprocess_popen(command)
         remote_path = self.remote_pathdir.append(source_path.get_filename())
+        log.Info("Writing %s" % remote_path.name)
         if remote_filename:
             command = "acdcli rn %s %s" % (remote_path.name, remote_filename)
             self.subprocess_popen(command)
             remote_path = self.remote_pathdir.append(remote_filename)
         _, stdout, _ = self.subprocess_popen("acdcli metadata %s" % remote_path.name)
         target_md5 = json.loads(stdout)['contentProperties']['md5']
-        source_md5 = self._md5(source_path)
+        source_md5 = self._md5(source_path.name)
         if source_md5 != target_md5:
             error = "md5 hashes do not match %s != %s" % (source_md5, target_md5)
             raise BackendException(error)
         
     def get(self, remote_filename, local_path):
         remote_path = self.remote_pathdir.append(remote_filename)
-        command = "acdcli dl %s %s" % (remote_path.name, local_path.get_parent_dir())
+        command = "acdcli dl %s %s" % (remote_path.name, local_path.get_parent_dir().name)
         self.subprocess_popen(command)
         if remote_filename != local_path.get_filename():
-            current_path = path.Path(local_path.get_parent_dir())
-            current_path = current_path.append(remote_filename)
+            current_path = local_path.get_parent_dir().append(remote_filename)
             current_path.rename(local_path)
 
     def _list(self):
