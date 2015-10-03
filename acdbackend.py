@@ -11,12 +11,12 @@ import json
 class AcdBackend(duplicity.backend.Backend):
     """Use Amazon Cloud Drive
 
-    Urls look like acd://testfiles/output.
+    Urls look like acd://directory1/directory2
     """
     def __init__(self, parsed_url):
         duplicity.backend.Backend.__init__(self, parsed_url)
         if not parsed_url.path.startswith('//'):
-            raise BackendException("Bad file:// path syntax.")
+            raise BackendException("Bad acd:// path syntax.")
         self.remote_pathdir = path.Path(parsed_url.path[1:])
         directories = self.remote_pathdir.name.split("/")[1:]
         for i in range(len(directories)):
@@ -24,6 +24,7 @@ class AcdBackend(duplicity.backend.Backend):
             self.subprocess_popen(command)
  
     def put(self, source_path, remote_filename = None):
+        """Transfer source_path to remote_filename"""
         command = "acdcli ul %s %s" % (source_path.name, self.remote_pathdir.name)
         self.subprocess_popen(command)
         remote_path = self.remote_pathdir.append(source_path.get_filename())
@@ -40,6 +41,7 @@ class AcdBackend(duplicity.backend.Backend):
             raise BackendException(error)
         
     def get(self, remote_filename, local_path):
+        """Get remote filename, saving it to local_path"""
         remote_path = self.remote_pathdir.append(remote_filename)
         command = "acdcli dl %s %s" % (remote_path.name, local_path.get_parent_dir().name)
         self.subprocess_popen(command)
@@ -48,20 +50,23 @@ class AcdBackend(duplicity.backend.Backend):
             current_path.rename(local_path)
 
     def _list(self):
+        """List files in folder"""
         command = "acdcli ls %s" % self.remote_pathdir.name
         _, stdout, _ = self.subprocess_popen(command)
         filename_list = [line.split()[2] for line in stdout.split('\n')[:-1]]
         return filename_list
         
     def delete(self, filename_list):
+        """Delete files in filename_list"""
         for filename in filename_list:
             remote_path = self.remote_pathdir.append(filename)
             command = "acdcli rm %s" % remote_path.name
             self.subprocess_popen(command)
 
-    def _md5(self, fname):
+    def _md5(self, filename):
+        """Get the md5 hash of a file"""
         hash = hashlib.md5()
-        with open(fname, "rb") as f:
+        with open(filename, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash.update(chunk)
         return hash.hexdigest()
